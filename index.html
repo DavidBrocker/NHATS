@@ -188,6 +188,12 @@ div.csl-indent {
   <li><a href="#cognition" id="toc-cognition" class="nav-link" data-scroll-target="#cognition">Cognition</a></li>
   </ul></li>
   <li><a href="#data-setup" id="toc-data-setup" class="nav-link" data-scroll-target="#data-setup">Data &amp; setup</a></li>
+  <li><a href="#modeling-strategy" id="toc-modeling-strategy" class="nav-link" data-scroll-target="#modeling-strategy">Modeling strategy</a>
+  <ul class="collapse">
+  <li><a href="#primary-model" id="toc-primary-model" class="nav-link" data-scroll-target="#primary-model">Primary model</a></li>
+  <li><a href="#dementia" id="toc-dementia" class="nav-link" data-scroll-target="#dementia">Dementia</a></li>
+  <li><a href="#other-issues" id="toc-other-issues" class="nav-link" data-scroll-target="#other-issues">Other issues</a></li>
+  </ul></li>
   <li><a href="#next-steps" id="toc-next-steps" class="nav-link" data-scroll-target="#next-steps">Next steps</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
@@ -398,13 +404,91 @@ div.csl-indent {
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Scaffold — cg14dwrdimmrc + cg14dwrddlyrc; define decline across rounds</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
+<section id="modeling-strategy" class="level2">
+<h2 class="anchored" data-anchor-id="modeling-strategy">Modeling strategy</h2>
+<p><strong>Principle.</strong> Choose each term by its causal role (confounder, mediator, or outcome), decided <em>before</em> looking at results — not by whether it improves fit. Covariate blocks are entered in a pre-specified order to show how the estimate changes; terms are never dropped after the fact.</p>
+<p><strong>Two senses of “hierarchical.”</strong> (1) <em>Multilevel</em>: Rounds 11–14 are repeated measures nested within persons, so a mixed model reflects the data structure. (2) <em>Blocked entry</em>: acceptable only when the blocks are theory-driven and declared in advance.</p>
+<section id="primary-model" class="level3">
+<h3 class="anchored" data-anchor-id="primary-model">Primary model</h3>
+<p>Linear mixed model, outcome = word recall (immediate, then delayed), random intercept and slope by person:</p>
+<ul>
+<li><strong>Lagged exposure:</strong> isolation/loneliness at round <em>t − 1</em> predicting cognition at round <em>t</em>, to reduce reverse causation (decline → withdrawal).</li>
+<li><strong>Within/between decomposition:</strong> person-mean (between-person level) plus deviation from own mean (within-person change) for each exposure.</li>
+<li><strong>Pre-specified blocks:</strong></li>
+</ul>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Terms</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>M1</td>
+<td>Isolation only (+ time)</td>
+</tr>
+<tr class="even">
+<td>M2</td>
+<td>Loneliness only (+ time)</td>
+</tr>
+<tr class="odd">
+<td>M3</td>
+<td>Isolation + loneliness</td>
+</tr>
+<tr class="even">
+<td>M4</td>
+<td>M3 + demographics (age, sex, race/ethnicity, education)</td>
+</tr>
+<tr class="odd">
+<td>M5</td>
+<td>M4 + health/function (chronic conditions, depressive symptoms, hearing/vision, ADLs) — <em>sensitivity</em>; may be mediators</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="dementia" class="level3">
+<h3 class="anchored" data-anchor-id="dementia">Dementia</h3>
+<p>Dementia is on the causal pathway (isolation → decline → dementia), so it is <strong>not</strong> entered as a covariate. Plan:</p>
+<ol type="1">
+<li><strong>Primary:</strong> exclude probable dementia at the first included round (“decline among people without dementia”). Confirm the classification variable in the codebook. Because the classification includes a memory domain, flag possible circularity with the recall outcome and run a sensitivity analysis.</li>
+<li><strong>Separate aim:</strong> incident dementia as a time-to-event outcome (discrete-time or Cox).</li>
+<li><strong>Effect modification:</strong> compare with/without dementia or test an interaction rather than adjusting.</li>
+</ol>
+</section>
+<section id="other-issues" class="level3">
+<h3 class="anchored" data-anchor-id="other-issues">Other issues</h3>
+<ul>
+<li><strong>Proxy respondents</strong> have no recall scores (−2/−3) and no self-reported loneliness — describe this selection.</li>
+<li><strong>Attrition and death</strong> are informative — plan inverse-probability weighting or multiple imputation as sensitivity analyses.</li>
+<li><strong>Survey weights</strong> do not combine simply with mixed models — decide between population inference and within-cohort association.</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lme4)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Long panel: one row per person-round (R11-14), with lagged exposures</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># and person-mean / within-person deviation terms.</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># m1 &lt;- lmer(recall ~ time + iso_between + iso_within_lag + (time | spid), data = panel)</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># m2 &lt;- update(m1, . ~ . - iso_between - iso_within_lag + lone_between + lone_within_lag)</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># m3 &lt;- update(m1, . ~ . + lone_between + lone_within_lag)</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># m4 &lt;- update(m3, . ~ . + age + sex + race + educ)</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># m5 &lt;- update(m4, . ~ . + chronic + depress + sensory + adl)   # sensitivity</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+</section>
 <section id="next-steps" class="level2">
 <h2 class="anchored" data-anchor-id="next-steps">Next steps</h2>
 <ul class="task-list">
 <li><label><input type="checkbox">Reconcile the composite range (see TODO) and confirm <code>fl14noonetalk</code></label></li>
 <li><label><input type="checkbox">Decide primary vs.&nbsp;sensitivity measure (continuous 0–4 vs.&nbsp;≥ 2; Pohl 0–6)</label></li>
 <li><label><input type="checkbox">Harmonize variable names across Rounds 11–14 for the panel</label></li>
-<li><label><input type="checkbox">Define the decline operationalization and modeling strategy</label></li>
+<li><label><input type="checkbox">Find the dementia classification variable in the codebook and fix the exclusion rule</label></li>
+<li><label><input type="checkbox">Build the long person-round panel with lagged and within/between exposure terms</label></li>
+<li><label><input type="checkbox">Decide weighting and missing-data approach</label></li>
 </ul>
 </section>
 <section id="references" class="level2">
