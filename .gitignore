@@ -1,0 +1,19 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+/.quarto/
+
+**/*.quarto_ipynb
+
+# macOS
+.DS_Store
+
+# Restricted NHATS data (large; governed by data use agreement) and copyrighted PDFs
+/NHATS_R14_Final_Release_SAS_V2/
+/articles/
+
+# Rendered site (published to gh-pages branch via `quarto publish`)
+/_site/
+/.quarto/

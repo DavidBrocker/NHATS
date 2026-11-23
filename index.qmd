@@ -1,0 +1,153 @@
+---
+title: "NHATS: Social Isolation, Loneliness, and Cognitive Decline"
+subtitle: "A longitudinal analysis of NHATS Rounds 11–14"
+author:
+  - name: "David Brocker"
+  - name: "Maria Anderson"   # TODO: add co-author / affiliation
+  - name: "Rea Hoxha"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+---
+
+## Overview
+
+The **National Health and Aging Trends Study (NHATS)** is a nationally representative, longitudinal study of Medicare beneficiaries aged 65 and older in the United States, with annual in-person interviews beginning in 2011. Each round re-interviews the same sample persons (SP), supporting analysis of change over time.
+
+This project examines how **loneliness** and **social isolation** relate to **cognitive functioning and cognitive decline** in later life. Loneliness items were introduced in **Round 11**, so the analytic window spans **Rounds 11–14**, treating loneliness and isolation as time-varying predictors of concurrent and subsequent cognition.
+
+> **TODO / confirm:** round-to-year mapping, analytic sample size, and inclusion/exclusion criteria.
+
+## Research aims
+
+1.  **Describe** the distribution of loneliness and social isolation across Rounds 11–14.
+2.  **Model** loneliness and social isolation as predictors of cognitive performance (immediate and delayed word recall).
+3.  **Test** whether loneliness/isolation predict *cognitive decline* — within-person change in cognition across rounds.
+
+## Choice of social isolation measure
+
+There is **no single consensus metric** for social isolation in NHATS. Recent work notes directly that inconsistent measurement limits comparability across studies [@yang2024]. Two main families appear in the literature.
+
+**1. Structural / behavioral composite** [@cornwell2009; @cudjoe2020]. Living alone, social-network size, and social participation. This is the measure coded in `datapeak.R` and used by @he2026, who describe it as follows:
+
+> "Social isolation was measured using a four-domain composite index: living alone (household size = 1), no confidant (social network size = 0), restricted social participation (≥ 2 of 4 activities not performed: visiting friends/family, attending religious services, participating in clubs/classes, going out for enjoyment), yielding a 0–4 score with ≥ 2 indicating social isolation."
+>
+> --- @he2026
+
+**2. Berkman–Syme Social Network Index** [@berkman1979], validated for NHATS by @pohl2017, who scored it as:
+
+> "Indicator scores were summed to create the social isolation score (no = 1 point, yes = 0 points; range = 0 to 6), with higher score indicating greater isolation."
+>
+> --- @pohl2017
+
+@yang2024 adapt the Pohl measure to a 0–4 form with a different scoring direction (0 = severe isolation; 2–4 = socially connected), again illustrating the lack of a settled metric.
+
+**Recommendation.** Use the structural four-domain composite as the primary measure — it matches the code and @he2026 — citing @cornwell2009 and @cudjoe2020, with @berkman1979 as the conceptual root. To answer the "best metric" question defensibly, run a **sensitivity analysis** with an alternative operationalization (continuous 0–4 vs. dichotomous ≥ 2, and/or the @pohl2017 0–6 measure) to show results are not an artifact of one measurement choice. Keep **loneliness separate from isolation** (perceived vs. structural); @he2026 model them as distinct constructs.
+
+> **⚠️ TODO — reconcile the composite range.** @he2026 report a **0–4** score but describe only three binary domains (lives alone, no confidant, restricted participation), which maxes at 3. The original @cudjoe2020 index keeps **religious attendance as its own domain** (four separate 1-point domains). The code implements the literal He et al. text for now; confirm against Cudjoe whether religious attendance should be split out, and whether `fl14noonetalk` is a fifth flag.
+
+## Key constructs & operationalization
+
+Variable names are from the **Round 14 SP file**; the `14` prefix changes per round (`11`–`13`). Question wording is **verbatim from the NHATS Round 14 instrument** [@nhats2025instrument]; response codes are from the R14 SP Frequencies codebook.
+
+### Loneliness
+
+`wb14offelche5` is item (e) of the **WB1** well-being battery (cheerful, bored, full of life, upset, lonely), introduced in Round 11:
+
+> "SHOW CARD WB1. During the last month, how often did you feel … lonely? Would you say every day, most days, some days, rarely, or never?"
+>
+> --- @nhats2025instrument
+
+| Variable | Response codes |
+|------------------------------------|------------------------------------|
+| `wb14offelche5` (WB1e) | 1 = Every day (7 days/wk); 2 = Most days (5–6/wk); 3 = Some days (2–4/wk); 4 = Rarely (once a week or less); 5 = Never. Missing: −9/−8/−7/−1 |
+
+> @he2026 classify responses of **"every day" or "most days"** (codes 1–2) as lonely. Note a slight wording difference: the instrument reads "how often *did* you feel," whereas He et al. quote "how often *have* you felt."
+
+### Social isolation — four-domain composite (0–4; ≥ 2 = isolated)
+
+**Lives alone** — `hh14dhshldnum` = 1 (derived household size).
+
+**No confidant** — `sn14dnumsn` = 0. Derived from the SN name generator:
+
+> "The next questions are about who you talk to about important things in your life. This may include good or bad things that happen to you, problems you are having, or important concerns you may have."
+>
+> --- @nhats2025instrument
+
+**Restricted participation** — ≥ 2 of the 4 items below answered **No** (each: 1 = Yes, 2 = No; −1/−7/−8/−9 missing):
+
+| Variable | Verbatim question [@nhats2025instrument] |
+|------------------------------------|------------------------------------|
+| `pa14vistfrfam` (PA1) | "In the last month, did you ever visit in person with friends or family not living with you, either at your home or theirs?" |
+| `pa14attrelser` (PA5) | "In the last month, did you ever attend religious services? This includes attending in person or online." |
+| `pa14clbmtgrac` (PA9) | "In the last month, {besides religious services,} did you ever participate in clubs, classes, or other organized activities? This includes attending in person or online." |
+| `pa14outfrenjy` (PA13) | "In the last month, {besides participating in club or group activities,} did you ever go out for enjoyment? This includes things like going out to dinner, a movie, to gamble, or to hear music or see a play." |
+
+**Candidate fourth flag** — `fl14noonetalk` = 1 (SP has no one to talk to). See the reconciliation TODO above.
+
+### Cognition
+
+Delayed-recall prompt (`cg14dwrddlyrc`), from the 10-word list task:
+
+> "A little while ago, I read you a list of 10 words and you repeated the ones you could remember. Please tell me any of the words that you remember now."
+>
+> --- @nhats2025instrument
+
+| Variable | NHATS item (R14) | Responses |
+|------------------------|------------------------|------------------------|
+| `cg14dwrdimmrc` | Derived — **score, immediate word recall** (CG8) | 0–10 (−1 Inapplicable; −2/−3 proxy; −7 refused) |
+| `cg14dwrddlyrc` | Derived — **score, delayed word recall** (CG15) | 0–10 (−1 Inapplicable; −2/−3 proxy; −7 refused) |
+
+> **Call-out:** `cg14prewrdrcl` is **CG7PRE — "intro to word recall"**, a gateway flag (1 = continue, 2 = refuses), *not* a score. Use `cg14dwrdimmrc` (immediate) + `cg14dwrddlyrc` (delayed).
+
+## Data & setup
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+library(haven)
+library(tidyverse)
+
+# Round 14 SP file (primary); add R11–R13 SP files for the longitudinal panel
+sp <- read_sas(
+  "NHATS_R14_Final_Release_SAS_V2/NHATS_Round_14_SP_File_V2.sas7bdat"
+)
+```
+
+```{r}
+#| label: construct-loneliness
+#| eval: false
+
+# Scaffold — recode missing (-9/-8/-7/-1) to NA; lonely = codes 1-2 (He et al.)
+```
+
+```{r}
+#| label: construct-social-isolation
+#| eval: false
+
+# Scaffold — four-domain composite (Cudjoe 2020 / He et al. 2026).
+# See datapeak.R for the working exploration of each domain.
+```
+
+```{r}
+#| label: construct-cognition
+#| eval: false
+
+# Scaffold — cg14dwrdimmrc + cg14dwrddlyrc; define decline across rounds
+```
+
+## Next steps
+
+- [ ] Reconcile the composite range (see TODO) and confirm `fl14noonetalk`
+- [ ] Decide primary vs. sensitivity measure (continuous 0–4 vs. ≥ 2; Pohl 0–6)
+- [ ] Harmonize variable names across Rounds 11–14 for the panel
+- [ ] Define the decline operationalization and modeling strategy
+
+## References
+
+::: {#refs}
+:::
