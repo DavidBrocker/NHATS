@@ -140,12 +140,65 @@ sp <- read_sas(
 # Scaffold — cg14dwrdimmrc + cg14dwrddlyrc; define decline across rounds
 ```
 
+## Modeling strategy
+
+**Principle.** Choose each term by its causal role (confounder, mediator, or outcome), decided *before* looking at results — not by whether it improves fit. Covariate blocks are entered in a pre-specified order to show how the estimate changes; terms are never dropped after the fact.
+
+**Two senses of "hierarchical."** (1) *Multilevel*: Rounds 11–14 are repeated measures nested within persons, so a mixed model reflects the data structure. (2) *Blocked entry*: acceptable only when the blocks are theory-driven and declared in advance.
+
+### Primary model
+
+Linear mixed model, outcome = word recall (immediate, then delayed), random intercept and slope by person:
+
+- **Lagged exposure:** isolation/loneliness at round *t − 1* predicting cognition at round *t*, to reduce reverse causation (decline → withdrawal).
+- **Within/between decomposition:** person-mean (between-person level) plus deviation from own mean (within-person change) for each exposure.
+- **Pre-specified blocks:**
+
+| Model | Terms |
+|------------------------------------|------------------------------------|
+| M1 | Isolation only (+ time) |
+| M2 | Loneliness only (+ time) |
+| M3 | Isolation + loneliness |
+| M4 | M3 + demographics (age, sex, race/ethnicity, education) |
+| M5 | M4 + health/function (chronic conditions, depressive symptoms, hearing/vision, ADLs) — *sensitivity*; may be mediators |
+
+### Dementia
+
+Dementia is on the causal pathway (isolation → decline → dementia), so it is **not** entered as a covariate. Plan:
+
+1. **Primary:** exclude probable dementia at the first included round ("decline among people without dementia"). Confirm the classification variable in the codebook. Because the classification includes a memory domain, flag possible circularity with the recall outcome and run a sensitivity analysis.
+2. **Separate aim:** incident dementia as a time-to-event outcome (discrete-time or Cox).
+3. **Effect modification:** compare with/without dementia or test an interaction rather than adjusting.
+
+### Other issues
+
+- **Proxy respondents** have no recall scores (−2/−3) and no self-reported loneliness — describe this selection.
+- **Attrition and death** are informative — plan inverse-probability weighting or multiple imputation as sensitivity analyses.
+- **Survey weights** do not combine simply with mixed models — decide between population inference and within-cohort association.
+
+```{r}
+#| label: model-scaffold
+#| eval: false
+
+library(lme4)
+
+# Long panel: one row per person-round (R11-14), with lagged exposures
+# and person-mean / within-person deviation terms.
+# m1 <- lmer(recall ~ time + iso_between + iso_within_lag + (time | spid), data = panel)
+# m2 <- update(m1, . ~ . - iso_between - iso_within_lag + lone_between + lone_within_lag)
+# m3 <- update(m1, . ~ . + lone_between + lone_within_lag)
+# m4 <- update(m3, . ~ . + age + sex + race + educ)
+# m5 <- update(m4, . ~ . + chronic + depress + sensory + adl)   # sensitivity
+```
+
 ## Next steps
 
 - [ ] Reconcile the composite range (see TODO) and confirm `fl14noonetalk`
 - [ ] Decide primary vs. sensitivity measure (continuous 0–4 vs. ≥ 2; Pohl 0–6)
 - [ ] Harmonize variable names across Rounds 11–14 for the panel
-- [ ] Define the decline operationalization and modeling strategy
+- [ ] Find the dementia classification variable in the codebook and fix the exclusion rule
+- [ ] Build the long person-round panel with lagged and within/between exposure terms
+- [ ] Decide weighting and missing-data approach
 
 ## References
 
